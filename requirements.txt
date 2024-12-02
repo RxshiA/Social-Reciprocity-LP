@@ -6,3 +6,4 @@ openai
 numpy
 scikit-learn
 pymongo
+pytest

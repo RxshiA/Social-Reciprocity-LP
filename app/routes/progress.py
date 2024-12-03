@@ -10,9 +10,9 @@ router = APIRouter()
 def custom_jsonable_encoder(obj):
     if isinstance(obj, ObjectId):
         return str(obj)
-    if isinstance(obj, dict):
+    elif isinstance(obj, dict):
         return {k: custom_jsonable_encoder(v) for k, v in obj.items()}
-    if isinstance(obj, list):
+    elif isinstance(obj, list):
         return [custom_jsonable_encoder(i) for i in obj]
     return jsonable_encoder(obj)
 
@@ -32,4 +32,4 @@ async def retrieve_child_progress(child_id: str):
     progress = get_progress(child_id)
     if not progress:
         raise HTTPException(status_code=404, detail="Child progress not found")
-    return custom_jsonable_encoder(progress)
+    return custom_jsonable_encoder(dict(progress))

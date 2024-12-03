@@ -1,9 +1,11 @@
 from fastapi.testclient import TestClient
 from app.main import app
-
+from unittest.mock import patch
 
 client = TestClient(app)
 
+
+@patch.dict('os.environ', {'OPENAI_API_KEY': 'fake-api-key'})
 def test_submit_feedback():
     response = client.post(
         "/api/submit_feedback/",
@@ -24,4 +26,5 @@ def test_submit_feedback():
     assert "new_level" in data
     assert "story" in data
     assert "questions" in data
-    assert isinstance(data["questions"], str)  # Verify questions are generated as a string
+    # Verify questions are generated as a string
+    assert isinstance(data["questions"], str)

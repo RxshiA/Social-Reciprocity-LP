@@ -13,10 +13,12 @@ y_train = [2, 1, 3]  # Target levels
 clf = RandomForestClassifier()
 clf.fit(X_train, y_train)
 
+
 def adjust_level(accuracy, sadness, happiness, current_level):
     features = np.array([[accuracy, sadness, happiness, current_level]])
     predicted_level = clf.predict(features)[0]
-    return predicted_level
+    return int(predicted_level)  # Convert numpy.int64 to native Python int
+
 
 if __name__ == "__main__":
     # Test the adjust_level function

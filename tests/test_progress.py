@@ -1,10 +1,18 @@
 from fastapi.testclient import TestClient
 from app.main import app
 from unittest.mock import patch
+import pytest
 
 client = TestClient(app)
 
-@patch("app.db.save_progress")
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_and_teardown():
+    yield
+
+
+@patch.dict('os.environ', {'MONGO_URI': 'fake-mongo-uri'})
+@patch("app.database.save_progress")
 def test_save_progress(mock_save_progress):
     mock_save_progress.return_value = None
     response = client.post(
@@ -24,7 +32,9 @@ def test_save_progress(mock_save_progress):
     assert response.status_code == 200
     assert response.json() == {"message": "Child progress saved successfully"}
 
-@patch("app.db.get_progress")
+
+@patch.dict('os.environ', {'MONGO_URI': 'fake-mongo-uri'})
+@patch("app.database.get_progress")
 def test_get_progress(mock_get_progress):
     mock_get_progress.return_value = {
         "child_id": "123",

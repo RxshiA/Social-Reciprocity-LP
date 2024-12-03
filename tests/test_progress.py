@@ -6,12 +6,12 @@ import pytest
 client = TestClient(app)
 
 
-@pytest.fixture(scope="session", autouse=True)
-def setup_and_teardown():
-    yield
+@pytest.fixture(autouse=True)
+def mock_mongo():
+    with patch("app.database.client") as mock_client:
+        yield mock_client
 
 
-@patch.dict('os.environ', {'MONGO_URI': 'fake-mongo-uri'})
 @patch("app.database.save_progress")
 def test_save_progress(mock_save_progress):
     mock_save_progress.return_value = None
@@ -33,7 +33,6 @@ def test_save_progress(mock_save_progress):
     assert response.json() == {"message": "Child progress saved successfully"}
 
 
-@patch.dict('os.environ', {'MONGO_URI': 'fake-mongo-uri'})
 @patch("app.database.get_progress")
 def test_get_progress(mock_get_progress):
     mock_get_progress.return_value = {

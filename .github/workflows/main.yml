@@ -23,5 +23,15 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Run Tests
-      run: pytest
+    - name: Create mock .env file
+      run: |
+        echo "OPENAI_API_KEY=fake-api-key" > .env
+        echo "MONGO_URI=mongodb://localhost:27017" >> .env
+
+    - name: Run tests
+      run: |
+        pytest tests/ -v --cov=app
+
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      if: success()

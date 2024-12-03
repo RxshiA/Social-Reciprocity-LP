@@ -1,12 +1,18 @@
 from fastapi.testclient import TestClient
 from app.main import app
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
 
 client = TestClient(app)
 
 
 @patch.dict('os.environ', {'OPENAI_API_KEY': 'fake-api-key'})
-def test_submit_feedback():
+@patch('app.utils.story_generator.generate_story')
+@patch('app.utils.story_generator.generate_mcqs')
+def test_submit_feedback(mock_generate_mcqs, mock_generate_story):
+    # Setup mocks
+    mock_generate_story.return_value = "Test story"
+    mock_generate_mcqs.return_value = "Test questions"
+
     response = client.post(
         "/api/submit_feedback/",
         json={
@@ -26,5 +32,4 @@ def test_submit_feedback():
     assert "new_level" in data
     assert "story" in data
     assert "questions" in data
-    # Verify questions are generated as a string
     assert isinstance(data["questions"], str)

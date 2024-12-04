@@ -26,13 +26,13 @@ def get_database():
 
 def save_progress(progress):
     database = get_database()
-    if not database:
+    if database is None:
         return None
     return database.child_progress.insert_one(progress.model_dump())
 
 
 def get_progress(child_id):
     database = get_database()
-    if not database:
+    if database is None:
         return None
     return database.child_progress.find_one({"child_id": child_id})

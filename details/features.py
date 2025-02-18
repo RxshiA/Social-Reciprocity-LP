@@ -29,16 +29,20 @@ plt.show(block=False)
 from sklearn.model_selection import train_test_split
 
 # Features and target
-X = data[["accuracy", "sadness", "happiness", "engagement", "time_spent", "current_level"]]
+X = data[["accuracy", "sadness", "happiness",
+          "engagement", "time_spent", "current_level"]]
 y = data["level"]
 
 # Train-test split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42)
 
 # Plot train-test split
 plt.figure(figsize=(8, 6))
-plt.scatter(X_train['accuracy'], X_train['current_level'], color='blue', label='Train')
-plt.scatter(X_test['accuracy'], X_test['current_level'], color='red', label='Test')
+plt.scatter(X_train['accuracy'], X_train['current_level'],
+            color='blue', label='Train')
+plt.scatter(X_test['accuracy'], X_test['current_level'],
+            color='red', label='Test')
 plt.xlabel('Accuracy')
 plt.ylabel('Current Level')
 plt.title('Train-Test Split')
@@ -53,7 +57,8 @@ clf.fit(X_train, y_train)
 
 # Feature Importance
 importances = clf.feature_importances_
-feature_importances = pd.DataFrame({"Feature": X.columns, "Importance": importances}).sort_values(by="Importance", ascending=False)
+feature_importances = pd.DataFrame(
+    {"Feature": X.columns, "Importance": importances}).sort_values(by="Importance", ascending=False)
 
 # Plot feature importance
 plt.figure(figsize=(10, 6))

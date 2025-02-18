@@ -24,7 +24,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 
 # Train RandomForest Classifier
 clf = RandomForestClassifier(n_estimators=100, random_state=42)
-clf.fit(X_train, y_train) 
+clf.fit(X_train, y_train)
 
 # Predictions
 y_pred = clf.predict(X_test)
@@ -40,6 +40,7 @@ feature_importances = pd.DataFrame(
     {"Feature": X.columns, "Importance": importances}).sort_values(by="Importance", ascending=False)
 print("Feature Importances:")
 print(feature_importances)
+
 
 # Function to Adjust Level
 def adjust_level(accuracy, sadness, happiness, engagement, time_spent, current_level):

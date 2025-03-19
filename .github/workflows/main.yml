@@ -74,10 +74,17 @@ jobs:
         run: |
           docker push 042077470246.dkr.ecr.ap-south-1.amazonaws.com/adaptive-learning-api:latest
 
-      # Step 7: Deploy to Existing Elastic Beanstalk Environment
+      # Step 7: Initialize Elastic Beanstalk Application
+      - name: Initialize Elastic Beanstalk
+        env:
+          AWS_REGION: ap-south-1
+        run: |
+          eb init adaptive-learning-api --region $AWS_REGION --platform docker --no-verify-ssl --no-interactive
+
+      # Step 8: Deploy to Existing Elastic Beanstalk Environment
       - name: Deploy to Elastic Beanstalk
         env:
           AWS_REGION: ap-south-1
         run: |
-          eb init -p docker adaptive-learning-api --region $AWS_REGION --platform docker --interactive
           eb deploy Social-reciprocity-learn-env
+         

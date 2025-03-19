@@ -38,8 +38,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AWS_REGION: ap-south-1
-      EB_ENVIRONMENT: Social-reciprocity-learn-env
-      EB_APPLICATION: adaptive-learning-api
+      EB_ENVIRONMENT: adaptive-learning-test-env  # Your new environment name
+      EB_APPLICATION: adaptive-learning-api  # Your new application name
 
     steps:
       # Step 1: Checkout the code

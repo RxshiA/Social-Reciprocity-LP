@@ -81,10 +81,18 @@ jobs:
         run: |
           eb init adaptive-learning-api --region $AWS_REGION --platform docker --no-verify-ssl
 
-      # Step 8: Deploy to Existing Elastic Beanstalk Environment
+      # Step 8: Create Application Version
+      - name: Create Application Version
+        env:
+          AWS_REGION: ap-south-1
+        run: |
+          zip -r app.zip .
+          aws s3 cp app.zip s3://elasticbeanstalk-$AWS_REGION-$(aws sts get-caller-identity --query Account --output text)/adaptive-learning-api/app.zip
+          eb create-version --application-name adaptive-learning-api --version-label app-$(date +%Y%m%d%H%M%S) --source-bundle S3Bucket=elasticbeanstalk-$AWS_REGION-$(aws sts get-caller-identity --query Account --output text),S3Key=adaptive-learning-api/app.zip
+
+      # Step 9: Deploy to Existing Elastic Beanstalk Environment
       - name: Deploy to Elastic Beanstalk
         env:
           AWS_REGION: ap-south-1
         run: |
           eb deploy Social-reciprocity-learn-env
-   

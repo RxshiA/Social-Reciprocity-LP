@@ -11,3 +11,4 @@ app.include_router(progress.router, prefix="/api", tags=["Progress"])
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Adaptive Learning API"}
+ 

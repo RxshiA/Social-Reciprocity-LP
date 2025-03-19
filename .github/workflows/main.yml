@@ -33,7 +33,7 @@ jobs:
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3
         if: success()
-        
+
   build-and-deploy:
     runs-on: ubuntu-latest
 
@@ -42,25 +42,31 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Log in to Amazon ECR
-      - name: Log in to Amazon ECR
-        env:
-          AWS_REGION: ap-south-1
-        run: |
-          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin 042077470246.dkr.ecr.ap-south-1.amazonaws.com
+      # Step 2: Configure AWS credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
 
-      # Step 3: Build and tag the Docker image
+      # Step 3: Log in to Amazon ECR
+      - name: Log in to Amazon ECR
+        run: |
+          aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 042077470246.dkr.ecr.ap-south-1.amazonaws.com
+
+      # Step 4: Build and tag the Docker image
       - name: Build Docker image
         run: |
           docker build -t adaptive-learning-api .
           docker tag adaptive-learning-api:latest 042077470246.dkr.ecr.ap-south-1.amazonaws.com/adaptive-learning-api:latest
 
-      # Step 4: Push the Docker image to ECR
+      # Step 5: Push the Docker image to ECR
       - name: Push Docker image to ECR
         run: |
           docker push 042077470246.dkr.ecr.ap-south-1.amazonaws.com/adaptive-learning-api:latest
 
-      # Step 5: Deploy to Elastic Beanstalk
+      # Step 6: Deploy to Elastic Beanstalk
       - name: Deploy to Elastic Beanstalk
         env:
           AWS_REGION: ap-south-1

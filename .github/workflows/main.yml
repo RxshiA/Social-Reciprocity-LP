@@ -38,6 +38,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AWS_REGION: ap-south-1
+      EB_ENVIRONMENT: Social-reciprocity-learn-env
+      EB_APPLICATION: adaptive-learning-api
 
     steps:
       # Step 1: Checkout the code
@@ -60,74 +62,85 @@ jobs:
       # Step 4: Build and tag the Docker image
       - name: Build Docker image
         run: |
-          docker build -t adaptive-learning-api .
-          docker tag adaptive-learning-api:latest 042077470246.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/adaptive-learning-api:latest
+          docker build -t ${{ env.EB_APPLICATION }} .
+          docker tag ${{ env.EB_APPLICATION }}:latest 042077470246.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.EB_APPLICATION }}:latest
 
       # Step 5: Push the Docker image to ECR
       - name: Push Docker image to ECR
         run: |
-          docker push 042077470246.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/adaptive-learning-api:latest
+          docker push 042077470246.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.EB_APPLICATION }}:latest
 
-      # Step 6: Create and deploy application version
+      # Step 6: Create a Dockerrun.aws.json file
+      - name: Create Dockerrun.aws.json
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          cat > Dockerrun.aws.json << EOF
+          {
+            "AWSEBDockerrunVersion": "1",
+            "Image": {
+              "Name": "042077470246.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.EB_APPLICATION }}:latest",
+              "Update": "true"
+            },
+            "Ports": [
+              {
+                "ContainerPort": "8000",
+                "HostPort": "8000"
+              }
+            ]
+          }
+          EOF
+          cat Dockerrun.aws.json
+
+      # Step 7: Create and deploy application version
       - name: Create and deploy application version
         run: |
           # Create a version label with timestamp
-          VERSION_LABEL="app-$(date +%Y%m%d%H%M%S)"
+          VERSION_LABEL="v-$(date +%Y%m%d%H%M%S)"
           
-          # Create a zip file of the application
-          zip -r app.zip . -x "*.git*"
+          # Create a zip file with just the Dockerrun.aws.json
+          zip -r deploy.zip Dockerrun.aws.json
           
           # Get account ID
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
           
-          # Upload the application zip to S3
-          aws s3 cp app.zip s3://elasticbeanstalk-${{ env.AWS_REGION }}-$ACCOUNT_ID/adaptive-learning-api/$VERSION_LABEL.zip
+          # Check if the application exists
+          if ! aws elasticbeanstalk describe-applications --application-names ${{ env.EB_APPLICATION }} > /dev/null 2>&1; then
+            echo "Creating application ${{ env.EB_APPLICATION }}..."
+            aws elasticbeanstalk create-application --application-name ${{ env.EB_APPLICATION }}
+          fi
+          
+          # Upload the deployment package to S3
+          S3_BUCKET="elasticbeanstalk-${{ env.AWS_REGION }}-$ACCOUNT_ID"
+          S3_KEY="${{ env.EB_APPLICATION }}/$VERSION_LABEL.zip"
+          
+          echo "Uploading deployment package to S3..."
+          aws s3 cp deploy.zip s3://$S3_BUCKET/$S3_KEY
           
           # Create the application version
+          echo "Creating application version $VERSION_LABEL..."
           aws elasticbeanstalk create-application-version \
-            --application-name adaptive-learning-api \
+            --application-name ${{ env.EB_APPLICATION }} \
             --version-label $VERSION_LABEL \
-            --source-bundle S3Bucket=elasticbeanstalk-${{ env.AWS_REGION }}-$ACCOUNT_ID,S3Key=adaptive-learning-api/$VERSION_LABEL.zip \
-            --auto-create-application
+            --source-bundle S3Bucket=$S3_BUCKET,S3Key=$S3_KEY
           
-          echo "Waiting for application version to be processed..."
+          # Check if the environment exists
+          if ! aws elasticbeanstalk describe-environments \
+              --environment-names ${{ env.EB_ENVIRONMENT }} \
+              --application-name ${{ env.EB_APPLICATION }} \
+              --query "Environments[?Status!='Terminated']" \
+              --output text > /dev/null 2>&1; then
+            
+            echo "Creating environment ${{ env.EB_ENVIRONMENT }}..."
+            aws elasticbeanstalk create-environment \
+              --application-name ${{ env.EB_APPLICATION }} \
+              --environment-name ${{ env.EB_ENVIRONMENT }} \
+              --solution-stack-name "64bit Amazon Linux 2 v3.6.0 running Docker" \
+              --version-label $VERSION_LABEL
+          else
+            echo "Updating environment ${{ env.EB_ENVIRONMENT }}..."
+            aws elasticbeanstalk update-environment \
+              --environment-name ${{ env.EB_ENVIRONMENT }} \
+              --version-label $VERSION_LABEL
+          fi
           
-          # Poll for the application version to be processed (with timeout)
-          MAX_ATTEMPTS=20  # 20 attempts * 15 seconds = 5 minutes max wait time
-          ATTEMPT=1
-          
-          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-            echo "Check attempt $ATTEMPT of $MAX_ATTEMPTS..."
-            
-            # Get the current status of the application version
-            STATUS=$(aws elasticbeanstalk describe-application-versions \
-              --application-name adaptive-learning-api \
-              --version-labels $VERSION_LABEL \
-              --query "ApplicationVersions[0].Status" \
-              --output text)
-            
-            echo "Current status: $STATUS"
-            
-            # If the status is PROCESSED, we can proceed
-            if [ "$STATUS" = "PROCESSED" ]; then
-              echo "Application version is now processed. Proceeding with deployment."
-              break
-            fi
-            
-            # If we've reached the maximum number of attempts, exit with an error
-            if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
-              echo "Timed out waiting for application version to be processed."
-              exit 1
-            fi
-            
-            # Wait for 15 seconds before checking again
-            echo "Waiting 15 seconds before checking again..."
-            sleep 15
-            ATTEMPT=$((ATTEMPT+1))
-          done
-          
-          # Update the environment with the new version
-          echo "Deploying version $VERSION_LABEL to environment Social-reciprocity-learn-env"
-          aws elasticbeanstalk update-environment \
-            --environment-name Social-reciprocity-learn-env \
-            --version-label $VERSION_LABEL
+          echo "Deployment initiated. Waiting for environment to be updated..."

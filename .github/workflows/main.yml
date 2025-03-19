@@ -79,7 +79,7 @@ jobs:
         env:
           AWS_REGION: ap-south-1
         run: |
-          eb init adaptive-learning-api --region $AWS_REGION --platform docker --no-verify-ssl --no-interactive
+          eb init adaptive-learning-api --region $AWS_REGION --platform docker --no-verify-ssl
 
       # Step 8: Deploy to Existing Elastic Beanstalk Environment
       - name: Deploy to Elastic Beanstalk
@@ -87,4 +87,4 @@ jobs:
           AWS_REGION: ap-south-1
         run: |
           eb deploy Social-reciprocity-learn-env
-         
+   

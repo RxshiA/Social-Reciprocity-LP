@@ -1,0 +1,10 @@
+# filepath: /Users/rashiamarasiri/Projects/LearningPath/.vercelignore
+.git/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+tests/
+.env
+.venv/

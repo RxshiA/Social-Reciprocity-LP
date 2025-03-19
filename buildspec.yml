@@ -1,19 +1,41 @@
-version: 0.2
+name: CI/CD Pipeline
 
-phases:
-  install:
-    runtime-versions:
-      docker: 20
-  pre_build:
-    commands:
-      - echo Logging in to Amazon ECR...
-      - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 042077470246.dkr.ecr.ap-south-1.amazonaws.com
-  build:
-    commands:
-      - echo Building the Docker image...
-      - docker build -t adaptive-learning-api .
-      - docker tag adaptive-learning-api:latest 042077470246.dkr.ecr.ap-south-1.amazonaws.com/adaptive-learning-api:latest
-  post_build:
-    commands:
-      - echo Pushing the Docker image to ECR...
-      - docker push 042077470246.dkr.ecr.ap-south-1.amazonaws.com/adaptive-learning-api:latest
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Log in to Amazon ECR
+      - name: Log in to Amazon ECR
+        env:
+          AWS_REGION: ap-south-1
+        run: |
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin 042077470246.dkr.ecr.ap-south-1.amazonaws.com
+
+      # Step 3: Build and tag the Docker image
+      - name: Build Docker image
+        run: |
+          docker build -t adaptive-learning-api .
+          docker tag adaptive-learning-api:latest 042077470246.dkr.ecr.ap-south-1.amazonaws.com/adaptive-learning-api:latest
+
+      # Step 4: Push the Docker image to ECR
+      - name: Push Docker image to ECR
+        run: |
+          docker push 042077470246.dkr.ecr.ap-south-1.amazonaws.com/adaptive-learning-api:latest
+
+      # Step 5: Deploy to Elastic Beanstalk
+      - name: Deploy to Elastic Beanstalk
+        env:
+          AWS_REGION: ap-south-1
+        run: |
+          eb init -p docker adaptive-learning-api --region $AWS_REGION
+          eb deploy

@@ -36,6 +36,8 @@ jobs:
 
   build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ap-south-1
 
     steps:
       # Step 1: Checkout the code
@@ -48,42 +50,47 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-south-1
+          aws-region: ${{ env.AWS_REGION }}
 
-      # Step 3: Install Elastic Beanstalk CLI
-      - name: Install Elastic Beanstalk CLI
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-pip
-          pip3 install awsebcli --upgrade --user
-          export PATH=$PATH:~/.local/bin
-
-      # Step 4: Log in to Amazon ECR
+      # Step 3: Log in to Amazon ECR
       - name: Log in to Amazon ECR
         run: |
-          aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 042077470246.dkr.ecr.ap-south-1.amazonaws.com
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin 042077470246.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
 
-      # Step 5: Build and tag the Docker image
+      # Step 4: Build and tag the Docker image
       - name: Build Docker image
         run: |
           docker build -t adaptive-learning-api .
-          docker tag adaptive-learning-api:latest 042077470246.dkr.ecr.ap-south-1.amazonaws.com/adaptive-learning-api:latest
+          docker tag adaptive-learning-api:latest 042077470246.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/adaptive-learning-api:latest
 
-      # Step 6: Push the Docker image to ECR
+      # Step 5: Push the Docker image to ECR
       - name: Push Docker image to ECR
         run: |
-          docker push 042077470246.dkr.ecr.ap-south-1.amazonaws.com/adaptive-learning-api:latest
+          docker push 042077470246.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/adaptive-learning-api:latest
 
-      # Step 7: Initialize Elastic Beanstalk Application
-      - name: Initialize Elastic Beanstalk
-        env:
-          AWS_REGION: ap-south-1
+      # Step 6: Create and deploy application version
+      - name: Create and deploy application version
         run: |
-          eb init adaptive-learning-api --region $AWS_REGION --platform docker --no-verify-ssl
-
-      # Step 8: Deploy to Existing Elastic Beanstalk Environment
-      - name: Deploy to Elastic Beanstalk
-        env:
-          AWS_REGION: ap-south-1
-        run: |
-          eb deploy Social-reciprocity-learn-env
+          # Create a version label with timestamp
+          VERSION_LABEL="app-$(date +%Y%m%d%H%M%S)"
+          
+          # Create a zip file of the application
+          zip -r app.zip . -x "*.git*"
+          
+          # Get account ID
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          
+          # Upload the application zip to S3
+          aws s3 cp app.zip s3://elasticbeanstalk-${{ env.AWS_REGION }}-$ACCOUNT_ID/adaptive-learning-api/$VERSION_LABEL.zip
+          
+          # Create the application version
+          aws elasticbeanstalk create-application-version \
+            --application-name adaptive-learning-api \
+            --version-label $VERSION_LABEL \
+            --source-bundle S3Bucket=elasticbeanstalk-${{ env.AWS_REGION }}-$ACCOUNT_ID,S3Key=adaptive-learning-api/$VERSION_LABEL.zip \
+            --auto-create-application
+          
+          # Update the environment with the new version
+          aws elasticbeanstalk update-environment \
+            --environment-name Social-reciprocity-learn-env \
+            --version-label $VERSION_LABEL

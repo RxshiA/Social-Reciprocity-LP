@@ -90,6 +90,14 @@ jobs:
             --source-bundle S3Bucket=elasticbeanstalk-${{ env.AWS_REGION }}-$ACCOUNT_ID,S3Key=adaptive-learning-api/$VERSION_LABEL.zip \
             --auto-create-application
           
+          echo "Waiting for application version to be processed..."
+          sleep 30
+          
+          # Verify the application version is ready
+          aws elasticbeanstalk describe-application-versions \
+            --application-name adaptive-learning-api \
+            --version-labels $VERSION_LABEL
+          
           # Update the environment with the new version
           aws elasticbeanstalk update-environment \
             --environment-name Social-reciprocity-learn-env \

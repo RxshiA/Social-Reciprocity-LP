@@ -1,29 +1,42 @@
 from fastapi import APIRouter
 from app.utils.level_adjustment import adjust_level
 from app.utils.story_generator import generate_story, generate_mcqs
-from app.models import ChildProgress
+from pydantic import BaseModel
 
 router = APIRouter()
 
+class AdjustLevelRequest(BaseModel):
+    accuracy: int
+    sadness: int
+    happiness: int
+    engagement: int
+    time_spent: int
+    current_level: int
 
-@router.post("/submit_feedback/")
-async def submit_feedback(progress: ChildProgress):
-    # Adjust level based on progress with all required parameters
+class GenerateStoryRequest(BaseModel):
+    current_level: int
+
+
+@router.post("/adjust_level")
+async def adjust_level_api(request: AdjustLevelRequest):
+    # Adjust level based on the input parameters
     new_level = adjust_level(
-        accuracy=progress.question_accuracy,
-        sadness=progress.emotional_feedback.sadness,
-        happiness=progress.emotional_feedback.happiness,
-        engagement=progress.emotional_feedback.engagement,
-        time_spent=progress.question_time,
-        current_level=progress.current_level
+        accuracy=request.accuracy,
+        sadness=request.sadness,
+        happiness=request.happiness,
+        engagement=request.engagement,
+        time_spent=request.time_spent,
+        current_level=request.current_level
     )
+    return {"new_level": new_level}
 
-    # Generate a new story and MCQs for the child
-    story = await generate_story(new_level)
+
+@router.post("/generate_story_and_questions")
+async def generate_story_and_questions(request: GenerateStoryRequest):
+    # Generate a story and MCQs based on the current level
+    story = await generate_story(request.current_level)
     mcqs = await generate_mcqs(story)
-
     return {
-        "new_level": new_level,
         "story": story,
         "questions": mcqs
     }
